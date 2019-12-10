@@ -20,6 +20,9 @@ async fn main() {
             break;
         };
 
+        let len = next.len();
+        next.truncate(len - 1); // remove eol
+
         if next.len() == 0 {
             println!("should be method id [and params]");
             continue;
@@ -35,6 +38,7 @@ async fn main() {
 
         let mut result_blob = ResultBlob::new();
         for arg in next.split(' ').skip(1) {
+            println!("arg: {}", arg);
             if arg.chars().nth(0).expect("0 exist or won't split out") == 'i' {
                 let arg = match arg.split_at(1).1.parse::<u64>() {
                     Ok(v) => v,
@@ -46,6 +50,7 @@ async fn main() {
                 result_blob.push(arg);
             } else {
                 println!("only integer arguments supported atm, for example i35654");
+                continue;
             }
         }
 

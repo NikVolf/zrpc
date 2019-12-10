@@ -12,7 +12,7 @@ pub struct ResultBlob {
 }
 
 #[derive(Debug)]
-pub enum DecodeError { UnexpectedEof }
+pub enum DecodeError { UnexpectedEof, InvalidMethod }
 
 pub trait Elementary: Sized {
 

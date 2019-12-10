@@ -1,4 +1,4 @@
-use zrpc::{ReqRepService, DrainBlob, ResultBlob};
+use zrpc::{ReqRepService, DrainBlob, ResultBlob, DecodeError};
 use futures::{future, StreamExt};
 use tokio::{
 	prelude::*,
@@ -12,21 +12,34 @@ struct Accumulator(u64);
 
 impl ReqRepService for Accumulator {
     type MethodId = u16;
-	type Future = future::Ready<ResultBlob>;
+	type Future = future::Ready<std::io::Result<ResultBlob>>;
 
-    fn handle(&mut self, method: Self::MethodId, mut arguments: DrainBlob) -> future::Ready<ResultBlob>
+    fn handle(&mut self, method: Self::MethodId, mut arguments: DrainBlob) -> Self::Future
 	{
-		if method == 1 {
-			// add
-			self.0 = self.0 + arguments.next().expect("crash");
-		} else if method == 2 {
-			// sub
-			self.0 = self.0.saturating_sub(*arguments.next().expect("crash"));
-		}
-
 		let mut result = ResultBlob::new();
-		result.push(self.0);
-		future::ready(result)
+		match arguments.next()
+			.and_then(|v| {
+				if method == 1 {
+					// add
+					Ok(self.0 + v)
+				} else if method == 2 {
+					// sub
+					Ok(self.0.saturating_sub(*v))
+				} else {
+					Err(DecodeError::InvalidMethod)
+				}
+			})
+			.map_err(|_| std::io::Error::from(std::io::ErrorKind::InvalidInput))
+		{
+			Ok(v) => {
+				self.0 = v;
+				result.push(self.0);
+				future::ready(Ok(result))
+			},
+			Err(e) => {
+				future::ready(Err(e))
+			}
+		}
     }
 }
 
@@ -72,14 +85,28 @@ where S::MethodId: From<u16>,
 							.write().unwrap()
 							.handle(u16::from_le_bytes(buf).into(), DrainBlob::new(blob));
 
-						let result_blob: ResultBlob = result_blob_future.await;
+						let result_blob: ResultBlob = match result_blob_future.await {
+							Ok(blob) => blob,
+							Err(e) => {
+								println!("Error handling request: {:?}", e);
+
+								if let Err(e) = writer.write_all(&[0u8; 4]).await {
+									println!("Error sending response: {:?}... closing socket", e);
+									break;
+								}
+
+								continue;
+							}
+						};
 
 						if let Err(e) = writer.write_all(&(result_blob.as_bytes().len() as u32).to_le_bytes()).await {
-							println!("Error sending response: {:?}", e);
+							println!("Error sending response: {:?}... closing socket", e);
+							break;
 						}
 
 						if let Err(e) = writer.write_all(result_blob.as_bytes()).await {
-							println!("Error sending response: {:?}", e);
+							println!("Error sending response: {:?}... closing socket", e);
+							break;
 						}
 					}
 				});

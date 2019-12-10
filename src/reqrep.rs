@@ -3,7 +3,7 @@ use futures::Future;
 
 pub trait Service {
     type MethodId;
-    type Future: Future<Output=ResultBlob> + Send;
+    type Future: Future<Output=std::io::Result<ResultBlob>> + Send;
 
     fn handle(&mut self, method: Self::MethodId, arguments: DrainBlob) -> Self::Future;
 }
