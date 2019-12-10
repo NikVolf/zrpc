@@ -1,4 +1,4 @@
-use zrpc::{ReqRepService, DrainBlob, ResultBlob, DecodeError};
+use zrpc::{ReqRepService, DrainBlob, ResultBlob};
 use futures::{future, StreamExt};
 use tokio::{
 	prelude::*,
@@ -10,6 +10,22 @@ use std::sync::{Arc, RwLock};
 
 struct Accumulator(u64);
 
+impl Accumulator {
+	fn add(&mut self, val: &u64) -> u64 {
+		self.0 += val;
+		self.0
+	}
+
+	fn sub(&mut self, val: &u64) -> u64 {
+		self.0 = self.0.saturating_sub(*val);
+		self.0
+	}
+
+	fn set(&mut self, val: &u64) {
+		self.0 = *val;
+	}
+}
+
 impl ReqRepService for Accumulator {
     type MethodId = u16;
 	type Future = future::Ready<std::io::Result<ResultBlob>>;
@@ -17,29 +33,37 @@ impl ReqRepService for Accumulator {
     fn handle(&mut self, method: Self::MethodId, mut arguments: DrainBlob) -> Self::Future
 	{
 		let mut result = ResultBlob::new();
-		match arguments.next()
-			.and_then(|v| {
-				if method == 1 {
-					// add
-					Ok(self.0 + v)
-				} else if method == 2 {
-					// sub
-					Ok(self.0.saturating_sub(*v))
-				} else {
-					Err(DecodeError::InvalidMethod)
-				}
-			})
-			.map_err(|_| std::io::Error::from(std::io::ErrorKind::InvalidInput))
-		{
-			Ok(v) => {
-				self.0 = v;
-				result.push(self.0);
-				future::ready(Ok(result))
+		match method {
+			1 => {
+				let arg1: &u64 = match arguments.next() {
+					Ok(v) => v,
+					Err(_e) => { return future::ready(Err(std::io::Error::from(std::io::ErrorKind::InvalidInput))); }
+				};
+				let ret_val = self.add(arg1);
+				result.push(ret_val);
 			},
-			Err(e) => {
-				future::ready(Err(e))
+			2 => {
+				let arg1: &u64 = match arguments.next() {
+					Ok(v) => v,
+					Err(_e) => { return future::ready(Err(std::io::Error::from(std::io::ErrorKind::InvalidInput))); }
+				};
+				let ret_val = self.sub(arg1);
+				result.push(ret_val);
+			},
+			3 => {
+				let arg1: &u64 = match arguments.next() {
+					Ok(v) => v,
+					Err(_e) => { return future::ready(Err(std::io::Error::from(std::io::ErrorKind::InvalidInput))); }
+				};
+
+				self.set(arg1);
+			},
+			_ => {
+				return future::ready(Err(std::io::Error::from(std::io::ErrorKind::InvalidInput)));
 			},
 		}
+
+		future::ready(Ok(result))
     }
 }
 

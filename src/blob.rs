@@ -56,7 +56,6 @@ impl ResultBlob {
 }
 
 impl Elementary for u64 {
-
     fn size() -> usize { 8 }
 
     fn view(data: &mut [u8]) -> &u64 {
@@ -70,5 +69,4 @@ impl Elementary for u64 {
         // buf.len is guaranteed to be at least size() for elementary parameters
         buf.copy_from_slice(&self.to_le_bytes());
     }
-
 }
