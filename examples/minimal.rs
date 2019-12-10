@@ -38,7 +38,7 @@ impl ReqRepService for Accumulator {
 			},
 			Err(e) => {
 				future::ready(Err(e))
-			}
+			},
 		}
     }
 }
