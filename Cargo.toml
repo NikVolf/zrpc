@@ -5,4 +5,5 @@ authors = ["NikVolf <nikvolf@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-futures = "*"
+futures = "0.3"
+tokio = { version = "0.2", features = ["full"] }
