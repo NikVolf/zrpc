@@ -63,19 +63,24 @@ where S::MethodId: From<u16>,
 
                         let mut blob = vec![0u8; u32::from_le_bytes(blob_len_buf) as usize];
 
-						if let Err(_) = reader.read_exact(&mut blob).await {
+						if let Err(_) = reader.read_exact(&mut blob[..]).await {
 							println!("Closing req-rep client socket");
 							break;
 						}
 
-                        let result_blob: S::Future = service_ptr_clone
+                        let result_blob_future: S::Future = service_ptr_clone
 							.write().unwrap()
 							.handle(u16::from_le_bytes(buf).into(), DrainBlob::new(blob));
 
-						if let Err(e) = writer.write_all(result_blob.await.as_bytes()).await {
+						let result_blob: ResultBlob = result_blob_future.await;
+
+						if let Err(e) = writer.write_all(&(result_blob.as_bytes().len() as u32).to_le_bytes()).await {
 							println!("Error sending response: {:?}", e);
 						}
 
+						if let Err(e) = writer.write_all(result_blob.as_bytes()).await {
+							println!("Error sending response: {:?}", e);
+						}
 					}
 				});
 			},
