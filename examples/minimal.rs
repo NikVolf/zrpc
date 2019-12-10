@@ -20,6 +20,7 @@ impl ReqRepService for Accumulator {
 			// add
 			self.0 = self.0 + arguments.next().expect("crash");
 		} else if method == 2 {
+			// sub
 			self.0 = self.0.saturating_sub(*arguments.next().expect("crash"));
 		}
 
