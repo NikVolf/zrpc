@@ -7,8 +7,6 @@ mod codegen;
 use proc_macro::TokenStream;
 use syn::parse_macro_input;
 
-use codegen::rpc_impl;
-
 #[proc_macro_attribute]
 pub fn rpc(args: TokenStream, input: TokenStream) -> TokenStream {
 	let input_toks = parse_macro_input!(input as syn::Item);
@@ -18,7 +16,7 @@ pub fn rpc(args: TokenStream, input: TokenStream) -> TokenStream {
 		Err(error) => return error.to_compile_error().into(),
 	};
 
-	match rpc_impl(input_toks, options) {
+	match crate::codegen::generate(input_toks, options) {
 		Ok(output) => output.into(),
 		Err(err) => err.to_compile_error().into(),
 	}
