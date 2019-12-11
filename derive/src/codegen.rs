@@ -7,7 +7,7 @@ use syn::{fold::{self, Fold}, parse_quote, punctuated::Punctuated, Error, Ident,
 use crate::options::DeriveOptions;
 
 mod c {
-    use syn::{Ident, Type, Signature, Error, Result};
+    use syn::{Ident, Type, Signature, Error, Result, FnArg, PatType, Receiver, Pat, PatIdent, spanned::Spanned};
     use std::convert::TryFrom;
 
     pub struct NamedArg {
@@ -17,25 +17,62 @@ mod c {
 
     pub struct Return(Type);
 
+    pub enum ContextReference { None, SelfRef, SelfMutRef }
+
     pub struct Method {
-        pub self_mut: bool,
+        pub context_ref: ContextReference,
         pub name: Ident,
         pub args: Vec<NamedArg>,
         pub ret: Option<Return>,
+    }
+
+    impl Method {
+        pub fn new(name: Ident) -> Self {
+            Method {
+                context_ref: ContextReference::None,
+                name,
+                args: vec![],
+                ret: None,
+            }
+        }
     }
 
     impl TryFrom<&Signature> for Method {
         type Error = Error;
 
         fn try_from(v: &Signature) -> Result<Self> {
-            Ok(
-                Method {
-                    self_mut: false,
-                    name: v.ident.clone(),
-                    args: vec![],
-                    ret: None,
+            let mut res = Method::new(v.ident.clone());
+
+            for arg in v.inputs.iter() {
+                match arg {
+                    FnArg::Receiver(receiver) => {
+                        if receiver.reference.is_none() {
+                            return Err(Error::new(receiver.span(), "Move self is not yet supported. Coming soon!"));
+                        }
+
+                        if receiver.mutability.is_some() {
+                            res.context_ref = ContextReference::SelfMutRef;
+                        } else {
+                            res.context_ref = ContextReference::SelfRef;
+                        }
+                    },
+                    FnArg::Typed(PatType { pat, ty, .. }) => {
+                        if let Pat::Ident(PatIdent { ident, .. }) = &**pat {
+                            if ident == "self" {
+                                // not supporting those custom receivers
+                                return Err(Error::new(ident.span(), "Custom receivers are not yet supported. Coming soon!"));
+                            } else {
+                                res.args.push(NamedArg { name: ident.clone(), ty: *ty.clone() });
+                                continue;
+                            }
+                        }
+
+                        return Err(Error::new(pat.span(), "This type of argument is not supported!!"));
+                    }
                 }
-            )
+            }
+
+            Ok(res)
         }
     }
 }

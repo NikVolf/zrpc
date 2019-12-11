@@ -1,0 +1,5 @@
+error: Move self is not yet supported. Coming soon!
+ --> $DIR/trivia-method.rs:5:12
+  |
+5 |     fn add(mut self, a: u64) {
+  |            ^^^
