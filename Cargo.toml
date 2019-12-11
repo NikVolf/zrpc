@@ -8,3 +8,6 @@ edition = "2018"
 futures = "0.3"
 tokio = { version = "0.2", features = ["full"] }
 parity-tokio-ipc = { git = "http://github.com/nikvolf/parity-tokio-ipc", branch = "futures" }
+
+[workspace]
+ members = ["./", "derive"]
