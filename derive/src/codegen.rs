@@ -1,16 +1,17 @@
 use std::convert::TryFrom;
-use proc_macro2::{Span, TokenStream};
-use syn::{fold::{self, Fold}, parse_quote, punctuated::Punctuated, Error, Ident, Result, Token, ItemTrait, ItemImpl, ImplItem, Item,
-    FnArg, PatType, Type, ImplItemMethod
-};
+use proc_macro2::TokenStream;
+use syn::{Result, ItemTrait, ItemImpl, ImplItem};
 use quote::quote;
 
 use crate::options::DeriveOptions;
 
 mod c {
-    use syn::{Ident, Type, Signature, Error, Result, FnArg, PatType, Receiver, Pat, PatIdent, spanned::Spanned, ExprMatch, ReturnType};
+    use syn::{
+        Ident, Type, Signature, Error, Result, FnArg, PatType,
+        Pat, PatIdent, spanned::Spanned, ReturnType
+    };
     use std::convert::TryFrom;
-    use proc_macro2::{Span, TokenStream, Literal};
+    use proc_macro2::{TokenStream, Literal};
     use quote::quote;
 
     pub struct NamedArg {
