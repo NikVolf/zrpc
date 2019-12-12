@@ -8,7 +8,7 @@ use quote::quote;
 use crate::options::DeriveOptions;
 
 mod c {
-    use syn::{Ident, Type, Signature, Error, Result, FnArg, PatType, Receiver, Pat, PatIdent, spanned::Spanned, ExprMatch};
+    use syn::{Ident, Type, Signature, Error, Result, FnArg, PatType, Receiver, Pat, PatIdent, spanned::Spanned, ExprMatch, ReturnType};
     use std::convert::TryFrom;
     use proc_macro2::{Span, TokenStream, Literal};
     use quote::quote;
@@ -44,13 +44,17 @@ mod c {
             let name = &self.name;
             let args = ::std::iter::repeat(quote! { arguments.next().unwrap() }).take(self.args.len());
 
-            return match self.ret {
+            return match &self.ret {
                 None => quote! {
                     #literal => {
                         self.#name(#(#args),*);
                     }
                 },
-                Some(_) => unimplemented!(),
+                Some(Return(ty)) => quote! {
+                    #literal => {
+                        result.push(self.#name(#(#args),*));
+                    }
+                }
             }
         }
     }
@@ -88,6 +92,10 @@ mod c {
                         return Err(Error::new(pat.span(), "This type of argument is not supported!!"));
                     }
                 }
+            }
+
+            if let ReturnType::Type(_, ty) = &v.output {
+                res.ret = Some(Return(*ty.clone()));
             }
 
             Ok(res)
