@@ -3,12 +3,15 @@ use proc_macro2::{Span, TokenStream};
 use syn::{fold::{self, Fold}, parse_quote, punctuated::Punctuated, Error, Ident, Result, Token, ItemTrait, ItemImpl, ImplItem, Item,
     FnArg, PatType, Type, ImplItemMethod
 };
+use quote::quote;
 
 use crate::options::DeriveOptions;
 
 mod c {
-    use syn::{Ident, Type, Signature, Error, Result, FnArg, PatType, Receiver, Pat, PatIdent, spanned::Spanned};
+    use syn::{Ident, Type, Signature, Error, Result, FnArg, PatType, Receiver, Pat, PatIdent, spanned::Spanned, ExprMatch};
     use std::convert::TryFrom;
+    use proc_macro2::{Span, TokenStream, Literal};
+    use quote::quote;
 
     pub struct NamedArg {
         pub name: Ident,
@@ -33,6 +36,21 @@ mod c {
                 name,
                 args: vec![],
                 ret: None,
+            }
+        }
+
+        pub fn to_arm(&self, index: u16) -> TokenStream {
+            let literal = Literal::u16_suffixed(index);
+            let name = &self.name;
+            let args = ::std::iter::repeat(quote! { arguments.next().unwrap() }).take(self.args.len());
+
+            return match self.ret {
+                None => quote! {
+                    #literal => {
+                        self.#name(#(#args),*);
+                    }
+                },
+                Some(_) => unimplemented!(),
             }
         }
     }
@@ -95,7 +113,28 @@ fn generate_impl(input: ItemImpl, options: DeriveOptions) -> Result<TokenStream>
 		})
 		.collect::<Result<Vec<c::Method>>>()?;
 
-    Ok(TokenStream::new())
+    let arms = methods.iter().enumerate().map(|(index, method)| method.to_arm(index as u16));
+    let target = &input.self_ty;
+
+    let r = quote! {
+        #input
+
+        impl zrpc::ReqRepService for #target {
+            type MethodId = u16;
+            type Future = futures::future::Ready<std::io::Result<zrpc::ResultBlob>>;
+
+            fn handle(&mut self, method: Self::MethodId, mut arguments: zrpc::DrainBlob) -> Self::Future {
+                let mut result = zrpc::ResultBlob::new();
+                match method {
+                    #(#arms),*
+                    _ => unreachable!(),
+                }
+                futures::future::ready(Ok(result))
+            }
+        }
+    };
+
+    Ok(r)
 }
 
 pub fn generate(input: syn::Item, options: DeriveOptions) -> Result<TokenStream> {
