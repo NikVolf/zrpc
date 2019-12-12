@@ -51,7 +51,7 @@ mod c {
                         self.#name(#(#args),*);
                     }
                 },
-                Some(Return(ty)) => quote! {
+                Some(Return(_)) => quote! {
                     #literal => {
                         result.push(self.#name(#(#args),*));
                     }
@@ -104,12 +104,12 @@ mod c {
     }
 }
 
-fn generate_trait(input: ItemTrait, options: DeriveOptions) -> Result<TokenStream>
+fn generate_trait(_input: ItemTrait, _options: DeriveOptions) -> Result<TokenStream>
 {
     Ok(TokenStream::new())
 }
 
-fn generate_impl(input: ItemImpl, options: DeriveOptions) -> Result<TokenStream> {
+fn generate_impl(input: ItemImpl, _options: DeriveOptions) -> Result<TokenStream> {
     let methods = input
 		.items
 		.iter()
