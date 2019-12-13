@@ -21,7 +21,7 @@ async fn main() {
         };
 
         let len = next.len();
-        next.truncate(len - 1); // remove eol
+        next.truncate(len - if std::cfg!(windows) { 2 } else { 1 }); // remove eol
 
         if next.len() == 0 {
             println!("should be method id [and params]");
