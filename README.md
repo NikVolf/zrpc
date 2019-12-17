@@ -9,6 +9,10 @@ Minimal RPC for Rust
 - Async/await
 - Server references! Zero-copy! and much more!
 
+## Easy to use
+
+See `examples/minimal`
+
 ## Server references
 
 Imagine there are two entities `A` and `B`. We invoke rpc `get_item(a_id) -> A`. We also have a method `generate_b(&A)`.
