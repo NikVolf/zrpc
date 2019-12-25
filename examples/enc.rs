@@ -1,4 +1,5 @@
 //! enhanced netcatt for zrpc
+//!   only for testing
 
 use tokio::{self, prelude::*};
 use parity_tokio_ipc::Endpoint;
@@ -38,7 +39,6 @@ async fn main() {
 
         let mut result_blob = ResultBlob::new();
         for arg in next.split(' ').skip(1) {
-            println!("arg: {}", arg);
             if arg.chars().nth(0).expect("0 exist or won't split out") == 'i' {
                 let arg = match arg.split_at(1).1.parse::<u64>() {
                     Ok(v) => v,

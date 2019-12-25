@@ -153,7 +153,7 @@ pub fn generate(input: syn::Item, options: DeriveOptions) -> Result<TokenStream>
 		item => {
 			return Err(syn::Error::new_spanned(
 				item,
-				"The #[rpc] custom attribute only works with trait declarations",
+				"The #[rpc] custom attribute only works with impl or trait declarations",
 			));
 		}
 	}?;
