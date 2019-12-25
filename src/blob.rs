@@ -44,7 +44,10 @@ impl DrainBlob {
     }
 
     pub fn next<T: ZeroCopy>(&mut self) -> Result<T, DecodeError> {
-        let len = T::size(&mut self.data)? as usize;
+        if self.position + 4 > self.data.len() { return Err(DecodeError::UnexpectedEof); }
+
+        let len = T::size(&mut self.data[self.position..self.position + 4])? as usize;
+        self.position += 4;
 
         if self.position + len > self.data.len() { return Err(DecodeError::UnexpectedEof); }
 

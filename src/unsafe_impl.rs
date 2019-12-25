@@ -71,3 +71,13 @@ impl PushValue for u32 {
         true
     }
 }
+
+impl<'a> ZeroCopy for &'a [u8] {
+    fn size(data: &mut [u8]) -> Result<u32, DecodeError> {
+        Ok(*<&u32 as ZeroCopy>::view(data))
+    }
+
+    fn view(data: &mut [u8]) -> Self {
+        unsafe { std::slice::from_raw_parts(data.as_ptr(), data.len()) }
+    }
+}
