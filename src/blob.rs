@@ -15,14 +15,22 @@ pub struct ResultBlob {
 #[derive(Debug)]
 pub enum DecodeError { UnexpectedEof, InvalidMethod }
 
-pub trait Elementary: Sized {
-
-    fn size() -> usize;
+pub trait ZeroCopy: Sized {
+    fn size(data: &mut [u8]) -> Result<u32, DecodeError>;
 
     fn view(data: &mut [u8]) -> &Self;
 
-    fn copy(self, data: &mut [u8]);
+    fn copy_from(data: &mut [u8]) -> Self;
 
+    fn copy_to(self, data: &mut [u8]);
+
+    fn instance_size(&self) -> u32;
+
+    fn is_fixed_size() -> bool;
+}
+
+pub trait Fixed {
+    fn fixed_size() -> u32;
 }
 
 impl DrainBlob {
@@ -33,12 +41,14 @@ impl DrainBlob {
         }
     }
 
-    pub fn next<T: Elementary>(&mut self) -> Result<&T, DecodeError> {
-        if self.position + T::size() > self.data.len() { return Err(DecodeError::UnexpectedEof); }
+    pub fn next<T: ZeroCopy>(&mut self) -> Result<&T, DecodeError> {
+        let len = T::size(&mut self.data)? as usize;
 
-        let result = T::view(&mut self.data[self.position..self.position + T::size()]);
+        if self.position + len > self.data.len() { return Err(DecodeError::UnexpectedEof); }
 
-        self.position += T::size();
+        let result = T::view(&mut self.data[self.position..self.position + len]);
+
+        self.position += len;
 
         Ok(result)
     }
@@ -49,9 +59,15 @@ impl ResultBlob {
 
     pub fn as_bytes(&self) -> &[u8] { &self.data }
 
-    pub fn push<E: Elementary>(&mut self, e: E) {
-        self.data.resize(self.data.len() + E::size(), 0);
-        let tail = self.data.len() - E::size();
-        e.copy(&mut self.data[tail..])
+    pub fn push<E: ZeroCopy>(&mut self, e: E) {
+        let instance_size = e.instance_size();
+        if !E::is_fixed_size() {
+            self.push(e.instance_size());
+        }
+
+        let instance_size = instance_size as usize;
+        self.data.resize(self.data.len() + instance_size, 0);
+        let tail = self.data.len() - instance_size;
+        e.copy_to(&mut self.data[tail..])
     }
 }

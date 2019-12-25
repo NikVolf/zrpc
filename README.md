@@ -1,6 +1,8 @@
 # zrpc
 Minimal RPC for Rust
 
+- Only what is shown in examples works, nothing more.
+
 ## Design goals
 
 - Non-forcing. You just write your api, put `#[rpc]` and it just works!
