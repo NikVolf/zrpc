@@ -66,7 +66,7 @@ async fn main() {
             client.read_exact(&mut response[..]).await.expect("Unable to read message from client");
 
             let mut drain_blob = DrainBlob::new(response);
-            let result = match drain_blob.next::<u64>() {
+            let result = match drain_blob.next::<&u64>() {
                 Ok(v) => v,
                 Err(e) => {
                     println!("Error decoding response code: {:?}", e);

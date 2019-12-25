@@ -18,8 +18,10 @@ pub enum DecodeError { UnexpectedEof, InvalidMethod }
 pub trait ZeroCopy: Sized {
     fn size(data: &mut [u8]) -> Result<u32, DecodeError>;
 
-    fn view(data: &mut [u8]) -> &Self;
+    fn view(data: &mut [u8]) -> Self;
+}
 
+pub trait PushValue {
     fn copy_from(data: &mut [u8]) -> Self;
 
     fn copy_to(self, data: &mut [u8]);
@@ -41,7 +43,7 @@ impl DrainBlob {
         }
     }
 
-    pub fn next<T: ZeroCopy>(&mut self) -> Result<&T, DecodeError> {
+    pub fn next<T: ZeroCopy>(&mut self) -> Result<T, DecodeError> {
         let len = T::size(&mut self.data)? as usize;
 
         if self.position + len > self.data.len() { return Err(DecodeError::UnexpectedEof); }
@@ -59,7 +61,7 @@ impl ResultBlob {
 
     pub fn as_bytes(&self) -> &[u8] { &self.data }
 
-    pub fn push<E: ZeroCopy>(&mut self, e: E) {
+    pub fn push<E: PushValue>(&mut self, e: E) {
         let instance_size = e.instance_size();
         if !E::is_fixed_size() {
             self.push(e.instance_size());
