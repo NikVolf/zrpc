@@ -58,6 +58,27 @@ mod c {
                 }
             }
         }
+
+        pub fn to_call(&self, _index: u16) -> TokenStream {
+            let method_name = &self.name;
+
+            let args = self.args.iter().map(|arg| {
+                let name = &arg.name;
+                let ty = &arg.ty;
+                quote! { #name: #ty }
+            }).collect::<Vec<TokenStream>>();
+
+            let ret = match self.ret {
+                Some(Return(ref v)) => quote! { #v },
+                None => quote! { () },
+            };
+
+            quote! {
+                fn #method_name(&mut self, #(#args),*) -> #ret {
+                    unimplemented!()
+                }
+            }
+        }
     }
 
     impl TryFrom<&Signature> for Method {
@@ -102,10 +123,30 @@ mod c {
             Ok(res)
         }
     }
+
+    pub fn build_client(methods: &[Method], _target_type: &Box<syn::Type>) -> TokenStream {
+
+        let calls = methods.iter().enumerate().map(|(i, m)| m.to_call(i as u16))
+            .collect::<Vec<TokenStream>>();
+
+        quote!{
+            mod gen_client {
+                struct Client;
+
+                impl Client {
+                    #(#calls)*
+                }
+            }
+        }
+
+    }
 }
 
 fn generate_trait(_input: ItemTrait, _options: DeriveOptions) -> Result<TokenStream>
 {
+
+
+
     Ok(TokenStream::new())
 }
 
@@ -120,13 +161,17 @@ fn generate_impl(input: ItemImpl, _options: DeriveOptions) -> Result<TokenStream
 				None
 			}
 		})
-		.collect::<Result<Vec<c::Method>>>()?;
+        .collect::<Result<Vec<c::Method>>>()?;
+
+    let target = &input.self_ty;
+    let client = c::build_client(&methods, target);
 
     let arms = methods.iter().enumerate().map(|(index, method)| method.to_arm(index as u16));
-    let target = &input.self_ty;
 
     let r = quote! {
         #input
+
+        #client
 
         impl zrpc::ReqRepService for #target {
             type MethodId = u16;
@@ -157,7 +202,6 @@ pub fn generate(input: syn::Item, options: DeriveOptions) -> Result<TokenStream>
 			));
 		}
 	}?;
-
 
     Ok(token_stream)
 }
