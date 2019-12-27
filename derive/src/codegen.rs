@@ -59,7 +59,7 @@ mod c {
             }
         }
 
-        pub fn to_call(&self, _index: u16) -> TokenStream {
+        pub fn to_call(&self, index: u16) -> TokenStream {
             let method_name = &self.name;
 
             let args = self.args.iter().map(|arg| {
@@ -68,14 +68,24 @@ mod c {
                 quote! { #name: #ty }
             }).collect::<Vec<TokenStream>>();
 
-            let ret = match self.ret {
-                Some(Return(ref v)) => quote! { #v },
-                None => quote! { () },
+            let args_push: Vec<TokenStream> = self.args.iter().map(|arg| {
+                let name = &arg.name;
+                quote! { call_blob.push(#name); }
+            }).collect();
+
+            let (ret, ret_spawn) = match self.ret {
+                Some(Return(ref v)) => (quote! { #v }, quote! { d_blob.spawn().expect("TODO: handle error?") }),
+                None => (quote! { () }, quote! { })
             };
 
+            let index_literal = Literal::u16_suffixed(index);
+
             quote! {
-                fn #method_name(&mut self, #(#args),*) -> #ret {
-                    unimplemented!()
+                pub async fn #method_name(&mut self, #(#args),*) -> #ret {
+                    let mut call_blob = zrpc::ResultBlob::new();
+                    #(#args_push)*
+                    let mut d_blob = self.helper.call(#index_literal, call_blob).await.expect("TODO: handle error?");
+                    #ret_spawn
                 }
             }
         }
@@ -131,9 +141,12 @@ mod c {
 
         quote!{
             mod gen_client {
-                struct Client;
+                pub struct Client<C: zrpc::ReqRepClientHelper> { helper: C }
 
-                impl Client {
+                impl<C: zrpc::ReqRepClientHelper> Client<C>
+                {
+                    pub fn new(helper: C) -> Self { Self { helper } }
+
                     #(#calls)*
                 }
             }
@@ -144,9 +157,6 @@ mod c {
 
 fn generate_trait(_input: ItemTrait, _options: DeriveOptions) -> Result<TokenStream>
 {
-
-
-
     Ok(TokenStream::new())
 }
 

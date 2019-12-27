@@ -57,7 +57,17 @@ impl DrainBlob {
 
         Ok(result)
     }
-}
+
+    pub fn spawn<T: PushValue>(&mut self) -> Result<T, DecodeError> {
+        if T::is_fixed_size() {
+            let instance = T::copy_from(&mut self.data[self.position..]);
+            self.position = self.position + instance.instance_size() as usize;
+            Ok(instance)
+        } else {
+            unimplemented!("Only fixed return values supported. Coming soon!")
+        }
+    }
+ }
 
 impl ResultBlob {
     pub fn new() -> Self { Self { data: vec![] } }

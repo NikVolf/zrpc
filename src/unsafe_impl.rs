@@ -36,6 +36,25 @@ impl PushValue for u64 {
     }
 }
 
+impl<T: PushValue + Copy> PushValue for &T {
+    fn copy_from(_data: &mut[u8]) -> Self {
+        unimplemented!("Cannot instantiate references! But coming soon.")
+    }
+
+    fn copy_to(self, buf: &mut [u8]) {
+        // buf.len is guaranteed to be at least size() for elementary parameters
+        T::copy_to(*self, buf)
+    }
+
+    fn instance_size(&self) -> u32 {
+        T::instance_size(*self)
+    }
+
+    fn is_fixed_size() -> bool {
+        T::is_fixed_size()
+    }
+}
+
 impl ZeroCopy for &u32 {
 
     // Fixed size for u64
@@ -79,5 +98,25 @@ impl<'a> ZeroCopy for &'a [u8] {
 
     fn view(data: &mut [u8]) -> Self {
         unsafe { std::slice::from_raw_parts(data.as_ptr(), data.len()) }
+    }
+}
+
+
+impl<'a> PushValue for &'a [u8] {
+    fn copy_from(_data: &mut[u8]) -> Self {
+        unimplemented!("Cannot instantiate references! But coming soon.")
+    }
+
+    fn copy_to(self, buf: &mut [u8]) {
+        // buf.len is guaranteed to be at least size() for elementary parameters
+        buf.copy_from_slice(self);
+    }
+
+    fn instance_size(&self) -> u32 {
+        self.len() as u32
+    }
+
+    fn is_fixed_size() -> bool {
+        false
     }
 }
